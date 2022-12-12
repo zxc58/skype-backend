@@ -28,7 +28,10 @@ const onEvents = {
     if (currentRoom) { socket.leave(currentRoom) }
     socket.join(id)
     emit.broadcast.toggleBusy(socket)
-    if (callback) { callback(room) }
+    const socketIds = io.of('/').adapter.rooms.get(id)
+    // console.log(socketIds)
+    if (callback) { callback(Array.from(socketIds)) }
+    socket.in(id).emit('newOneJoin', socket.id)
   }),
   onLeaveRoom: ({ io, socket }) => socket.on('leaveRoom', () => {
     const currentRoom = roomIn(socket)
@@ -36,9 +39,11 @@ const onEvents = {
     socket.leave(currentRoom)
     emit.broadcast.toggleBusy(socket)
   }),
-  onPeerconnectSignaling: ({ io, socket }) => socket.on('peerconnectSignaling', ({ desc, candidate }) => {
-    const nowRoom = roomIn(socket)
-    socket.to(nowRoom).emit('peerconnectSignaling', { desc, candidate })
-  })
+  onPeerconnectSignaling: ({ io, socket }) => socket.on('peerconnectSignaling', (message, callback) => {
+    const { recipientId } = message
+    socket.to(recipientId).emit('peerconnectSignaling', message)
+    if (callback) { callback() }
+  }),
+  onreturn: ({ io, socket }) => socket.on('return', (name, msg) => setTimeout(() => socket.emit(name, msg), 8000))
 }
 module.exports = onEvents
